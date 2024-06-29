@@ -7,6 +7,9 @@ using DG.Tweening;
 
 public class UICardBtn : MonoBehaviour,IPointerDownHandler
 {
+    [SerializeField] private Image mainImage;
+    [SerializeField] private Image childImage;
+    [SerializeField] private Button cardBtn;
     public RectTransform CardRect => (RectTransform)transform;
     public int CardType => cardType;
     public int CardIndex => cardIndex;
@@ -14,24 +17,29 @@ public class UICardBtn : MonoBehaviour,IPointerDownHandler
 
     private int cardType;
     private int cardIndex;
-    private Color flipColor;
-    private Button cardBtn;
-    private void OnValidate()
-    {
-        if (cardBtn == null) cardBtn = GetComponent<Button>();
-    }
-    private void Start()
-    {
-        if (cardBtn == null) cardBtn = GetComponent<Button>();
-    }
-    public void SetCardData(int index, int type, Color flipColor)
+    private Sprite flipSprite;
+    public void SetCardData(int index, int type, Sprite flipSprite, bool revealed)
     {
         cardType = type;
         cardIndex = index;
-        this.flipColor = flipColor;
+        this.flipSprite = flipSprite;
+        childImage.sprite = flipSprite;
+        if (revealed)
+        {
+            mainImage.enabled = false;
+            childImage.enabled = true;
+            cardBtn.interactable = false;
+        }
+        else
+        {
+            mainImage.enabled = true;
+            childImage.enabled = false;
+        }
+
     }
     public void OnPointerDown(PointerEventData eventData)
     {
+        if (!cardBtn.interactable) return;
         OnCardClick?.Invoke(this);
     }
     public Tween FlipCard(bool reveal, float tweenTime)
@@ -40,7 +48,16 @@ public class UICardBtn : MonoBehaviour,IPointerDownHandler
         seq.Append(CardRect.DOScaleX(0, tweenTime / 2f));
         seq.AppendCallback(() =>
         {
-            cardBtn.image.color = reveal ? flipColor : Color.white;
+            if (reveal)
+            {
+                mainImage.enabled = false;
+                childImage.enabled = true;
+            }
+            else
+            {
+                mainImage.enabled = true;
+                childImage.enabled = false;
+            }
         });
         seq.Append(CardRect.DOScaleX(1, tweenTime/2f));
         return seq;

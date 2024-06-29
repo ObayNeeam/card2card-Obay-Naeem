@@ -12,18 +12,40 @@ public class GameController : MonoBehaviour
     [SerializeField] GameSectionBase endSection;
     [SerializeField] GameStates gameStartingSection;
     public static GameController Instance { get; private set; }
-    public int TotalCards => totalCards;
+    public int TotalCards => Mathf.RoundToInt(cardLayout.x * cardLayout.y);
+    public bool StateLoaded
+    {
+        get
+        {
+            return stateLoaded;
+        }
+        set
+        {
+            stateLoaded = value;
+        }
+    }
+    public Vector2 CardsLayput
+    {
+        get
+        {
+            return cardLayout;
+        }
+        set
+        {
+            cardLayout = value;
+        }
+    }
 
     private GameStates currentGameState;
     private GameStates prevGameState;
     private GameSectionBase currentSection;
     private GameSectionBase prevSection;
-    private int totalCards;
+    private Vector2 cardLayout;
+    private bool stateLoaded;
 
     // Start is called before the first frame update
     private void Awake()
     {
-        totalCards = 6;
         if (Instance == null) Instance = this;
         else
         {
@@ -82,8 +104,9 @@ public class GameController : MonoBehaviour
                 }
             case GameStates.End:
                 {
-                        currentSection = null;
+                    currentSection = null;
                     prevSection = null;
+                    RestartGame();
                     return;
                 }
         }

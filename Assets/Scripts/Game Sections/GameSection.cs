@@ -1,9 +1,9 @@
 using DG.Tweening;
 using System;
 using System.Collections.Generic;
-using System.Collections;
 using UnityEngine;
 using System.Linq;
+using UnityEngine.SceneManagement;
 
 public class GameSection : GameSectionBase
 {
@@ -14,10 +14,14 @@ public class GameSection : GameSectionBase
     public bool[] cardsState;
     public Dictionary<int,UICardBtn> openCards;
     private Dictionary<int, float> openCardsTimer;
+    private GameStateStructure gameState;
+    private int playerMatches;
+    private int playerClicks;
     public override Tween DisableSection()
     {
         sectionEnabled = false;
         gameplayWidget.OnUICardClicked -= OnCardPick;
+        gameplayWidget.OnHomeBtnPressed -= OnHomeBtnClicked;
         return gameplayWidget.DeactivateWidget();
     }
 
@@ -26,28 +30,63 @@ public class GameSection : GameSectionBase
         sectionEnabled = true;
         Tween widget = gameplayWidget.ActivateWidget();
         InitDataStructures();
-        gameplayWidget.BuildGrid(cardsData);
+        gameplayWidget.BuildGrid(cardsData, cardsState);
         widget.OnComplete(()=>
         {
             gameplayWidget.OnUICardClicked += OnCardPick;
+            gameplayWidget.OnHomeBtnPressed += OnHomeBtnClicked;
         });
         return widget;
+    }
+    private void OnHomeBtnClicked()
+    {
+        GameStateHelper.Instance.SaveState(gameState);
+        SceneManager.LoadScene(0);
+    }
+    private void OnApplicationQuit()
+    {
+        if (!sectionEnabled) return;
+        GameStateHelper.Instance.SaveState(gameState);
     }
     private void InitDataStructures()
     {
         int totalCards = GameController.Instance.TotalCards;
-        cardsData = new List<int>();
-        cardsState = new bool[totalCards];
+
+        gameState = new GameStateStructure();
+        
+        if (GameController.Instance.StateLoaded)
+        {
+            bool result = GameStateHelper.Instance.LoadState(out gameState);
+            if (result)
+            {
+                playerMatches = gameState.userMatches;
+                playerClicks = gameState.userClicks;
+                cardsState = gameState.cellsState;
+                cardsData = gameState.cellsType.ToList();
+                GameController.Instance.CardsLayput = gameState.layout;
+            }
+            else
+            {
+                InitNewState(totalCards);
+            }
+        }
+        else
+        {
+            InitNewState(totalCards);
+        }
+
         openCards = new Dictionary<int, UICardBtn>();
         openCardsTimer = new Dictionary<int, float>();
-        cardsData = PopulateValues(totalCards);
-
     }
-    /*
-     *  0 - 0
-     *  1 - 2
-     *  
-     */
+    private void InitNewState(int totalCards)
+    {
+        gameState.layout = GameController.Instance.CardsLayput;
+        cardsData = new List<int>();
+        cardsState = new bool[totalCards];
+        cardsData = PopulateValues(totalCards);
+        gameState.cellsState = cardsState.ToArray();
+        gameState.cellsType = cardsData.ToArray();
+    }
     private List<int> PopulateValues(int totalCards)
     {
         List<int> possiableIndexes = Enumerable.Range(0, totalCards).ToList();
@@ -71,6 +110,8 @@ public class GameSection : GameSectionBase
     {
         card.SetBtnInteractable(false);
         openCards.Add(card.CardIndex, card);
+        playerClicks++;
+        gameState.userClicks++;
         card.FlipCard(true, 0.25f).OnComplete(() =>
         {
             openCardsTimer.Add(card.CardIndex, cardTimer);
@@ -122,7 +163,9 @@ public class GameSection : GameSectionBase
 
                 cardsState[index1] = true;
                 cardsState[index2] = true;
-                
+                gameState.cellsState = cardsState;
+                playerMatches++;
+                gameState.userMatches++;
                 openCardsTimer.Remove(index1);
                 openCardsTimer.Remove(index2);
 
@@ -131,13 +174,22 @@ public class GameSection : GameSectionBase
                 
                 openCards.Remove(index1);
                 openCards.Remove(index2);
-
+                CheckGameEnding();
                 break;
             }
         }
     }
-    private void OnGameEnd(bool isWon)
+    private void CheckGameEnding()
     {
+        foreach(bool cellState in cardsState)
+        {
+            if (!cellState) return;
+        }
+        OnGameEnd();
+    }
+    private void OnGameEnd()
+    {
+        GameStateHelper.Instance.DeleteState();
         // deal with game logic
         OnSectionEnded?.Invoke();
     }

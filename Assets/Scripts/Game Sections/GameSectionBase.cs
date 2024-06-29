@@ -5,7 +5,7 @@ using UnityEngine;
 
 public abstract class GameSectionBase : MonoBehaviour
 {
-    public bool sectionEnabled;
+    protected bool sectionEnabled;
     public abstract event System.Action OnSectionEnded;
     public abstract Tween EnableSection();
     public abstract Tween DisableSection();

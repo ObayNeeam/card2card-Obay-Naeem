@@ -9,18 +9,27 @@ public class StartSection : GameSectionBase
 
     public override Tween DisableSection()
     {
+        startWidget.OnGameStart -= OnPlayBtnClick;
+        startWidget.OnSavedGameStart -= OnSavePlayBtnClick;
         return startWidget.DeactivateWidget();
     }
 
 
     public override Tween EnableSection()
     {
-        startWidget.OnPlatBtnClick += OnPlatBtnClick;
+        startWidget.OnGameStart += OnPlayBtnClick;
+        startWidget.OnSavedGameStart += OnSavePlayBtnClick;
         Tween widgetTween = startWidget.ActivateWidget();
         return widgetTween;
     }
-    private void OnPlatBtnClick()
+    private void OnSavePlayBtnClick()
     {
+        GameController.Instance.StateLoaded = true;
+        OnSectionEnded?.Invoke();
+    }
+    private void OnPlayBtnClick(Vector2 layout)
+    {
+        GameController.Instance.CardsLayput = layout;
         OnSectionEnded?.Invoke();
     }
 }
