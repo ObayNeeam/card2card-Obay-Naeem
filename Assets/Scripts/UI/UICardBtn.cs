@@ -62,6 +62,11 @@ public class UICardBtn : MonoBehaviour,IPointerDownHandler
         seq.Append(CardRect.DOScaleX(1, tweenTime/2f));
         return seq;
     }
+    public Tween ShakeCard(float tweenTime)
+    {
+        return CardRect.DOPunchRotation(Vector3.one * 7.5f,tweenTime,15);
+    }
+
     public void SetBtnInteractable(bool state)
     {
         cardBtn.interactable = state;

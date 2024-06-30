@@ -1,6 +1,7 @@
 using DG.Tweening;
 using System;
 using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
 using System.Linq;
 using UnityEngine.SceneManagement;
@@ -9,6 +10,9 @@ public class GameSection : GameSectionBase
 {
     [SerializeField] private GameplaySubWidget gameplayWidget;
     [SerializeField, Range(1f,10f)] private float cardTimer = 5f;
+    [SerializeField] private AudioSource effectAudioPlayer;
+    [SerializeField] private AudioClip matchAudioClip;
+    [SerializeField] private AudioClip ClickAudioClip;
     public override event Action OnSectionEnded;
     public List<int> cardsData;
     public bool[] cardsState;
@@ -108,12 +112,14 @@ public class GameSection : GameSectionBase
     }
     private void OnCardPick(UICardBtn card)
     {
+        effectAudioPlayer.PlayOneShot(ClickAudioClip);
         card.SetBtnInteractable(false);
-        openCards.Add(card.CardIndex, card);
         playerClicks++;
         gameState.userClicks++;
+        gameplayWidget.SetPlayerClicks(playerClicks);
         card.FlipCard(true, 0.25f).OnComplete(() =>
         {
+            openCards.Add(card.CardIndex, card);
             openCardsTimer.Add(card.CardIndex, cardTimer);
             CheckOpenCards(card);
         });
@@ -123,10 +129,13 @@ public class GameSection : GameSectionBase
         if (!sectionEnabled) return;
         
         if (openCardsTimer.Count <= 0) return;
+
         List<int> cardsToRemove = new List<int>();
         List<int> cardsKeys = new List<int>(openCardsTimer.Keys);
         foreach(int key in cardsKeys)
         {
+            if (cardsState[key]) continue;
+
             openCardsTimer[key] -= Time.deltaTime;
             
             if (openCardsTimer[key] <= 0) cardsToRemove.Add(key);
@@ -149,35 +158,45 @@ public class GameSection : GameSectionBase
         if (openCards.Count <= 1) return;
 
         List<int> keys = new List<int>(openCards.Keys);
-
-        for (int i = 0; i < keys.Count - 1; i++)
+        for (int i = 0; i < keys.Count; i++)
         {
             int key = keys[i];
 
-            if (openCards[key].CardType == card.CardType && !cardsState[key])
+            //if (openCards[key].CardType == card.CardType && openCards[key].CardIndex != card.CardIndex && !cardsState[key])
+            if (IsOpenValid(openCards[key],card))
             {
-                Debug.Log("A Match");
-
+                effectAudioPlayer.PlayOneShot(matchAudioClip);
                 int index1 = card.CardIndex;
                 int index2 = key;
-
+                Debug.Log($"A Match Index {index1} and {index2} | Type {card.CardType}");
                 cardsState[index1] = true;
                 cardsState[index2] = true;
+
                 gameState.cellsState = cardsState;
                 playerMatches++;
                 gameState.userMatches++;
+                gameplayWidget.SetPlayerScore(playerMatches);
+
                 openCardsTimer.Remove(index1);
                 openCardsTimer.Remove(index2);
 
                 openCards[index1].SetBtnInteractable(false);
                 openCards[index2].SetBtnInteractable(false);
-                
+
+                openCards[index1].ShakeCard(0.7f);
+                openCards[index2].ShakeCard(0.7f);
+
                 openCards.Remove(index1);
                 openCards.Remove(index2);
+
                 CheckGameEnding();
                 break;
             }
         }
+    }
+    private bool IsOpenValid(UICardBtn card1, UICardBtn card2)
+    {
+        return card1.CardType == card2.CardType && card1.CardIndex != card2.CardIndex && !cardsState[card1.CardIndex];
     }
     private void CheckGameEnding()
     {
@@ -185,6 +204,11 @@ public class GameSection : GameSectionBase
         {
             if (!cellState) return;
         }
+        StartCoroutine(WaitTweenFinish());
+    }
+    private IEnumerator WaitTweenFinish()
+    {
+        yield return new WaitForSeconds(2f);
         OnGameEnd();
     }
     private void OnGameEnd()

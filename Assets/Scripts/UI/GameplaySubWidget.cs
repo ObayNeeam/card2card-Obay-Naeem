@@ -70,6 +70,11 @@ public class GameplaySubWidget : SubWidgetControllerBase
             cardsGridLayout.constraint = GridLayoutGroup.Constraint.FixedRowCount;
             cardsGridLayout.constraintCount = Mathf.RoundToInt(layout.x);
         }
+        if (layout.x > layout.y)
+        {
+            cardsGridLayout.constraint = GridLayoutGroup.Constraint.FixedRowCount;
+            cardsGridLayout.constraintCount = Mathf.RoundToInt(layout.x);
+        }
         else
         {
             cardsGridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
